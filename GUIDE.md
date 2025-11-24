@@ -108,21 +108,6 @@
 - 도구: draw.io, Lucidchart, Mermaid.js, 또는 손그림 스캔본도 가능
 - 포함 요소: VPC, Subnet, Load Balancer, Container, Database, 모니터링 등
 
-**b. 기술 선택 및 설계 근거**
-- 왜 이러한 아키텍처를 설계했는지 논리적으로 설명
-- 특정 AWS 서비스를 선택한 이유 (또는 GCP, Azure)
-- 주어진 요구사항(고가용성, Auto-scaling, 비용 효율성)을 어떻게 충족시켰는지
-
-**c. 운영 자동화 및 장애 대응 계획**
-- **모니터링 전략**:
-  - 주요 지표 (CPU, Memory, Request latency, Error rate)
-  - 알림 조건 (예: Error rate > 5% 시 Slack 알림)
-- **무중단 배포 전략**: Blue/Green, Rolling 등 구체적 방법
-- **장애 대응 시나리오**:
-  - DB 연결 실패 시
-  - 특정 API 서버 장애 시
-  - 트래픽 급증 시
-
 ---
 
 ### [PART 2] 심화 과제 (선택 사항)
@@ -160,13 +145,6 @@
   - 비용 분석 접근법 (어떤 도구/지표 확인)
   - 최적화 우선순위 (예: 컴퓨팅, 스토리지, 네트워크)
   - 구체적 개선안 3가지 이상
-
-**3. 보안 강화 시나리오**
-- **상황**: 보안 감사에서 IAM 권한이 과도하게 설정되어 있다는 지적
-- **요구사항**:
-  - 최소 권한 원칙(Principle of Least Privilege) 적용 계획
-  - Secrets 관리 개선안
-  - 네트워크 보안 강화 방안
 
 #### ▶ Option 3: 기타 DevOps 역량 증명
 

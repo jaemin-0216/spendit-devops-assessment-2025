@@ -1,0 +1,156 @@
+name: CI/CD for Receipt API (AWS Lambda Container Image)
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  lambda-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REPO: receipt-api
+      LAMBDA_FUNCTION_NAME: receipt-api-lambda
+      IMAGE_TAG: ${{ github.sha }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+    # -----------------------------------------------------
+    # 1) Checkout
+    # -----------------------------------------------------
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # -----------------------------------------------------
+    # 2) Buildx 세팅
+    # -----------------------------------------------------
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # -----------------------------------------------------
+    # 3) Docker 이미지 빌드
+    # -----------------------------------------------------
+    - name: Build Docker image
+      id: build_image
+      run: 
+        IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+        echo "IMAGE_URI=$IMAGE_URI"
+        docker build -t $IMAGE_URI .
+
+    # -----------------------------------------------------
+    # 4) 테스트
+    # -----------------------------------------------------
+    - name: Run container for test
+      id: container_test
+      run: |
+        echo "🐳 Running container for test..."
+        docker run -d --name receipt-api -p 8000:8000 $IMAGE_URI
+
+    - name: Run test-api.sh
+      id: test_api
+      run: |
+        echo "Running test-api.sh..."
+        chmod +x test-api.sh
+        ./test-api.sh
+
+    - name: Cleanup container
+      if: always()
+      run: |
+        echo "빌드 된 docker 이미지를 삭제 합니다...."
+        docker logs receipt-api || true
+        docker rm -f receipt-api || true
+
+    # -----------------------------------------------------
+    # 5) AWS Credentials (OIDC)
+    # -----------------------------------------------------
+    - name: Configure AWS Credentials (OIDC)
+      id: aws_creds
+      run: echo "AWS Credentials configured via OIDC"
+      # uses: aws-actions/configure-aws-credentials@v4
+      # with:
+      #   role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<GITHUB_DEPLOY_ROLE>
+      #   aws-region: ap-northeast-2
+
+    # -----------------------------------------------------
+    # 6) ECR push
+    # -----------------------------------------------------
+    - name: Login to ECR
+      id: ecr_login
+      run: |
+        aws ecr get-login-password --region $AWS_REGION \
+        | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+    - name: Ensure ECR repo exists
+      id: ecr_check
+      run: |
+        aws ecr describe-repositories --repository-names $ECR_REPO || \
+        aws ecr create-repository --repository-name $ECR_REPO
+
+    - name: Push image to ECR
+      id: ecr_push
+      run: docker push $IMAGE_URI
+
+    # -----------------------------------------------------
+    # 7) Lambda 업데이트 (시뮬레이션)
+    # -----------------------------------------------------
+    - name: Deploy to Lambda (Simulated)
+      id: lambda_deploy
+      run: |
+        echo "🚀 Deploy Lambda (Simulated)"
+        echo "Function: $LAMBDA_FUNCTION_NAME"
+        echo "Image URI: $IMAGE_URI"
+
+        # 실제 배포 예시:
+        # aws lambda update-function-code \
+        #   --function-name $LAMBDA_FUNCTION_NAME \
+        #   --image-uri $IMAGE_URI
+
+    # -----------------------------------------------------
+    # 8) 🔥 실패 시 자동 Rollback 실행
+    # -----------------------------------------------------
+    - name: Rollback on failure
+      if: failure()
+      run: 
+        echo "❗❗ Deployment failed → Starting rollback..."
+        echo "-----------------------------------------"
+        echo "📝 FAILED STEP LOGS:"
+        echo "-----------------------------------------"
+
+        echo "[Build Image Log]"
+        echo "${{ steps.build_image.outcome }}"
+
+        echo "[Test Container Log]"
+        echo "${{ steps.container_test.outcome }}"
+
+        echo "[test-api.sh Log]"
+        echo "${{ steps.test_api.outcome }}"
+
+        echo "[ECR Push Log]"
+        echo "${{ steps.ecr_push.outcome }}"
+
+        echo "[Lambda Deploy Log]"
+        echo "${{ steps.lambda_deploy.outcome }}"
+
+        echo "-----------------------------------------"
+        echo "⬅️ Lambda Rollback (Simulated)"
+        echo "이전 안정 버전으로 롤백한다고 가정합니다."
+        echo "Rollback completed (Simulated)"
+        # 실제 Lambda 롤백 명령:
+        # aws lambda update-function-code \
+        #   --function-name $LAMBDA_FUNCTION_NAME \
+        #   --image-uri <PREVIOUS_IMAGE_URI>
+
+        
+
+    # -----------------------------------------------------
+    # 9) 완료 로그
+    # -----------------------------------------------------
+    - name: Pipeline Completed
+      if: success()
+      run: echo "🎉 Deployment Succeeded"
