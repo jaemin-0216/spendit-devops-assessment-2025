@@ -18,6 +18,7 @@ jobs:
       LAMBDA_FUNCTION_NAME: receipt-api-lambda
       IMAGE_TAG: ${{ github.sha }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      #환경 별 env는 별도 관리 권장
 
     steps:
     # -----------------------------------------------------
@@ -27,24 +28,7 @@ jobs:
       uses: actions/checkout@v4
 
     # -----------------------------------------------------
-    # 2) Buildx 세팅
-    # -----------------------------------------------------
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    # -----------------------------------------------------
-    # 3) Docker 이미지 빌드
-    # -----------------------------------------------------
-    - name: Build Docker image
-      id: build_image
-      run: 
-        IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-        echo "IMAGE_URI=$IMAGE_URI"
-        docker build -t $IMAGE_URI .
-
-    # -----------------------------------------------------
-    # 4) 테스트
+    # 2) 테스트
     # -----------------------------------------------------
     - name: Run container for test
       id: container_test
@@ -65,6 +49,23 @@ jobs:
         echo "빌드 된 docker 이미지를 삭제 합니다...."
         docker logs receipt-api || true
         docker rm -f receipt-api || true
+
+    # -----------------------------------------------------
+    # 3) Buildx 세팅
+    # -----------------------------------------------------
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # -----------------------------------------------------
+    # 4) Docker 이미지 빌드
+    # -----------------------------------------------------
+    - name: Build Docker image
+      id: build_image
+      run: 
+        IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+        echo "IMAGE_URI=$IMAGE_URI"
+        docker build -t $IMAGE_URI .
 
     # -----------------------------------------------------
     # 5) AWS Credentials (OIDC)
@@ -103,9 +104,9 @@ jobs:
     - name: Deploy to Lambda (Simulated)
       id: lambda_deploy
       run: |
-        echo "🚀 Deploy Lambda (Simulated)"
-        echo "Function: $LAMBDA_FUNCTION_NAME"
-        echo "Image URI: $IMAGE_URI"
+        echo  "🚀 Deploy Lambda (Simulated)"
+        echo  "Function: $LAMBDA_FUNCTION_NAME"
+        echo  "Image URI: $IMAGE_URI"
 
         # 실제 배포 예시:
         # aws lambda update-function-code \
@@ -117,7 +118,7 @@ jobs:
     # -----------------------------------------------------
     - name: Rollback on failure
       if: failure()
-      run: 
+      run: |
         echo "❗❗ Deployment failed → Starting rollback..."
         echo "-----------------------------------------"
         echo "📝 FAILED STEP LOGS:"
@@ -142,6 +143,7 @@ jobs:
         echo "⬅️ Lambda Rollback (Simulated)"
         echo "이전 안정 버전으로 롤백한다고 가정합니다."
         echo "Rollback completed (Simulated)"
+
         # 실제 Lambda 롤백 명령:
         # aws lambda update-function-code \
         #   --function-name $LAMBDA_FUNCTION_NAME \
