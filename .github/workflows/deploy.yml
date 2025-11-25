@@ -72,6 +72,7 @@ jobs:
     - name: Configure AWS Credentials (OIDC)
       id: aws_creds
       run: echo "AWS Credentials configured via OIDC"
+      # 보안에 취약한 secrets 사용 대신 OIDC를 통한 사용
       # uses: aws-actions/configure-aws-credentials@v4
       # with:
       #   role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<GITHUB_DEPLOY_ROLE>
@@ -145,8 +146,6 @@ jobs:
         # aws lambda update-function-code \
         #   --function-name $LAMBDA_FUNCTION_NAME \
         #   --image-uri <PREVIOUS_IMAGE_URI>
-
-        
 
     # -----------------------------------------------------
     # 9) 완료 로그
